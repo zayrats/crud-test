@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model Admin {
+  id        Int       @id @default(autoincrement())
+  email     String   @unique
+  password  String  
+}
+
+model User {
+  id         Int          @id @default(autoincrement())
+  email      String       @unique
+  password   String
+  role       Position
+  name       String
+  department String?
+
+  bookings   Booking[]    @relation("UserBookings")
+  approvals  Approval[]
+  driverBookings Booking[] @relation("DriverBookings")
+  approverBookings Booking[] @relation("ApproverBookings")
+  activities ActivityLog[]
+
+  @@map("users")
+}
+
+model Approval {
+  id            Int           @id @default(autoincrement())
+  bookingId     Int
+  approverId    Int
+  level         Int
+  status        ApprovalStatus @default(PENDING)
+  comments      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  booking       Booking        @relation(fields: [bookingId], references: [id])
+  approver      User           @relation(fields: [approverId], references: [id])
+
+  @@map("approvals")
+}
+
+model Vehicle {
+  id               Int               @id @default(autoincrement())
+  type             VehicleType
+  model            String
+  licensePlate     String            @unique
+  ownedBy          OwnershipType
+  fuelConsumption  Float?
+  lastServiceDate  DateTime?
+
+  bookings         Booking[]
+  fuelConsumptions FuelConsumption[]
+  serviceHistories ServiceHistory[]
+
+  @@map("vehicles")
+}
+
+model Booking {
+  id          Int          @id @default(autoincrement())
+  bookingName String
+  description String
+  userId      Int
+  vehicleId   Int
+  driverId    Int
+  approverId  Int
+  startDate   DateTime
+  endDate     DateTime
+  status      BookingStatus @default(PENDING)
+  purpose     String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user        User          @relation("UserBookings", fields: [userId], references: [id])
+  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
+  driver      User          @relation("DriverBookings", fields: [driverId], references: [id])
+  approver    User          @relation("ApproverBookings", fields: [approverId], references: [id])
+  approvals   Approval[]
+
+  @@map("bookings")
+}
+
+model ServiceHistory {
+  id           Int       @id @default(autoincrement())
+  vehicleId    Int
+  serviceDate  DateTime
+  description  String
+  cost         Float
+  createdAt    DateTime  @default(now())
+
+  vehicle      Vehicle   @relation(fields: [vehicleId], references: [id])
+
+  @@map("service_histories")
+}
+
+model FuelConsumption {
+  id                Int       @id @default(autoincrement())
+  vehicleId         Int
+  date              DateTime
+  cost              Float
+  amount            Float
+  kilometers        Float
+  distanceTravelled Float
+  createdAt         DateTime  @default(now())
+
+  vehicle           Vehicle   @relation(fields: [vehicleId], references: [id])
+
+  @@map("fuel_consumptions")
+}
+
+model ActivityLog {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  action      String
+  description String
+  timestamp   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+enum Position {
+  MANAGER
+  SUPERVISOR
+  EMPLOYEE
+}
+
+enum VehicleType {
+  PASSENGER
+  CARGO
+}
+
+enum OwnershipType {
+  COMPANY
+  RENTAL
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
